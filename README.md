@@ -208,6 +208,7 @@ Press **Shift+Backspace** in the terminal running the script.
 This project is a fork/evolution of **DougDoug's TwitchPlays template**,
 itself originally based on:
 
+- **Nautilus Link** community and Hernique.txt -- só monstro sagrado! 
 - **Wituz** -- original ["Twitch Plays" tutorial](http://www.wituz.com/make-your-own-twitch-plays-stream.html)
 - **DougDoug** -- the TwitchPlays template this repo builds on
 - **DDarknut** -- added YouTube chat support
