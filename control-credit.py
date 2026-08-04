@@ -64,11 +64,9 @@ def prompt_for_team(team_label):
 print("Now assign competitors to teams. Only names from the competitors list above will be accepted.")
 TEAM_A = prompt_for_team('Team A')
 TEAM_B = prompt_for_team('Team B')
-TEAM_C = prompt_for_team('Team C')
 
 print(f"Team A ({len(TEAM_A)}): {TEAM_A}")
 print(f"Team B ({len(TEAM_B)}): {TEAM_B}")
-print(f"Team C ({len(TEAM_C)}): {TEAM_C}")
 
 # Admins can add new competitors/team members WHILE the bot is running, by
 # typing special commands in chat (see handle_message below) -- no need to
@@ -79,7 +77,7 @@ ADMIN_USERS = set(parse_semicolon_list(raw_admins))
 ADMIN_USERS.add(TWITCH_CHANNEL.lower())
 print(f"Admins who can add players live: {sorted(ADMIN_USERS)}")
 
-# Guards changes to COMPETITORS/TEAM_A/TEAM_B/TEAM_C/USER_TEAM, since these
+# Guards changes to COMPETITORS/TEAM_A/TEAM_B/USER_TEAM, since these
 # can now be edited live from a chat-handling thread while the main loop
 # and other message-handling threads are also reading them.
 roster_lock = threading.Lock()
@@ -98,15 +96,15 @@ def add_competitor(name):
 def add_to_team(name, team_letter):
     """
     Registers `name` as a competitor if not already, and assigns them to
-    team_letter ('A', 'B', or 'C'). Returns (success, message).
+    team_letter ('A' or 'B'). Returns (success, message).
     """
     name = name.strip().lower()
     team_letter = team_letter.strip().upper()
     if not name:
         return False, "No username given."
-    if team_letter not in ('A', 'B', 'C'):
-        return False, f'Invalid team "{team_letter}" (must be A, B, or C).'
-    team_list = {'A': TEAM_A, 'B': TEAM_B, 'C': TEAM_C}[team_letter]
+    if team_letter not in ('A', 'B'):
+        return False, f'Invalid team "{team_letter}" (must be A or B).'
+    team_list = {'A': TEAM_A, 'B': TEAM_B}[team_letter]
     with roster_lock:
         if name not in COMPETITORS:
             COMPETITORS.append(name)
@@ -131,20 +129,16 @@ def add_admin(name):
 
 # Team A can always send commands, freely, at any time -- it never has to wait.
 # Every MOVES_PER_BC_CREDIT commands that Team A sends, one "turn credit" is
-# banked for the opposing side. That credit can be spent by EITHER Team B or
-# Team C -- whichever of them sends a message first after the credit exists
-# is the one who gets to act. It is not fixed to always be B, and it doesn't
-# have to be spent immediately -- it just sits there banked until someone on
-# B or C uses it (or until MAX_BANKED_BC_CREDITS is hit, if you don't want
-# them able to stockpile too many at once).
+# banked for Team B. It doesn't have to be spent immediately -- it just sits
+# there banked until Team B uses it (or until MAX_BANKED_BC_CREDITS is hit,
+# if you don't want them able to stockpile too many at once).
 MOVES_PER_BC_CREDIT = 7
-MAX_BANKED_BC_CREDITS = 1  # raise this if you want B/C able to stockpile multiple unused turns
+MAX_BANKED_BC_CREDITS = 1  # raise this if you want Team B able to stockpile multiple unused turns
 
 # Lookup table built automatically from the rosters above: username -> team letter
 USER_TEAM = {}
 for _u in TEAM_A: USER_TEAM[_u] = 'A'
 for _u in TEAM_B: USER_TEAM[_u] = 'B'
-for _u in TEAM_C: USER_TEAM[_u] = 'C'
 
 a_move_count = 0
 bc_credits = 0
@@ -153,11 +147,10 @@ turn_lock = threading.Lock()
 def try_take_turn(username):
     """
     Team A: always allowed. Every MOVES_PER_BC_CREDIT A-moves, banks one
-    credit for the opposing side (capped at MAX_BANKED_BC_CREDITS).
+    credit for Team B (capped at MAX_BANKED_BC_CREDITS).
 
-    Team B or C: allowed only if a banked credit is available, in which case
-    it's spent (whichever of B/C asks first gets it -- not tied to one team).
-    If no credit is banked, the message is ignored.
+    Team B: allowed only if a banked credit is available, in which case
+    it's spent. If no credit is banked, the message is ignored.
 
     Anyone not on a team roster is ignored.
     This is thread-safe, so exactly one command gets through per available
@@ -173,7 +166,7 @@ def try_take_turn(username):
             if a_move_count % MOVES_PER_BC_CREDIT == 0:
                 bc_credits = min(bc_credits + 1, MAX_BANKED_BC_CREDITS)
             return True
-        elif team in ('B', 'C'):
+        elif team == 'B':
             if bc_credits > 0:
                 bc_credits -= 1
                 return True
@@ -302,8 +295,8 @@ def handle_message(message):
         msg = msg_lower.rstrip('.')
 
         # Only act on this message if it's this user's team's turn.
-        # Ignores anyone not on TEAM_A/TEAM_B/TEAM_C, and ignores messages
-        # from the "wrong" team while it's not their turn yet.
+        # Ignores anyone not on TEAM_A/TEAM_B, and ignores messages from
+        # Team B while it's not their turn yet.
         if not try_take_turn(username):
             return
 

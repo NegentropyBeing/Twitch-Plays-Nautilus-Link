@@ -26,10 +26,27 @@ YOUTUBE_STREAM_URL = None
 # This version supports up to 8 teams (A-H), each with its own independent
 # virtual controller. There is NO turn/credit system here -- any registered
 # player on any team can send a command at any time. This is intentional:
-# with up to 8 teams all talking at once, a turn-based queue would just add
+# with several teams all talking at once, a turn-based queue would just add
 # extra complexity on top of chat that's already going to be chaotic.
 
-TEAM_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+ALL_POSSIBLE_TEAM_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+def ask_num_teams():
+    while True:
+        raw = input(f'How many teams do you want to use (1-{len(ALL_POSSIBLE_TEAM_LETTERS)})? ').strip()
+        try:
+            num = int(raw)
+        except ValueError:
+            print("Please enter a number.\n")
+            continue
+        if not (1 <= num <= len(ALL_POSSIBLE_TEAM_LETTERS)):
+            print(f"Enter a number between 1 and {len(ALL_POSSIBLE_TEAM_LETTERS)}.\n")
+            continue
+        return num
+
+NUM_TEAMS = ask_num_teams()
+TEAM_LETTERS = ALL_POSSIBLE_TEAM_LETTERS[:NUM_TEAMS]
+print(f"Using {NUM_TEAMS} team(s): {TEAM_LETTERS}")
 
 def parse_semicolon_list(raw):
     """
@@ -55,7 +72,8 @@ print(f"Competitors ({len(COMPETITORS)}): {COMPETITORS}")
 TEAMS = {letter: [] for letter in TEAM_LETTERS}
 USER_TEAM = {}
 
-print("Now assign competitors to teams (A-H). Leave a team blank if you're using fewer than 8.")
+print(f"Now assign competitors to teams ({TEAM_LETTERS[0]}-{TEAM_LETTERS[-1]}). "
+      f"Leave a team blank if you don't want to use it.")
 for letter in TEAM_LETTERS:
     raw = input(f'Enter usernames for Team {letter}, separated by ";" (or leave blank to skip this team): ')
     names = []
